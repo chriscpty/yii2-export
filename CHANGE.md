@@ -1,6 +1,11 @@
 Change Log: `yii2-export`
 =========================
 
+## version 2.0.0
+
+- (enh #357): *BC Breaking*: Use `openspout/openspout` rather than `PHPSpreadsheet` for XLSX and CSV exports
+- (enh #378): Update `ExportWriterPdf::createExternalWriterInstance` declaration to be compatible with `PHPSpreadsheet` version 2
+
 ## version 1.4.3
 
 **Date:** 25-Jul-2023
