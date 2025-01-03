@@ -23,6 +23,9 @@ use OpenSpout\Common\Exception\IOException;
 use OpenSpout\Writer\Common\Entity\Sheet;
 use OpenSpout\Writer\CSV\Options as OpenspoutCsvOptions;
 use OpenSpout\Writer\CSV\Writer as OpenspoutCsvWriter;
+use OpenSpout\Writer\Exception\Border\InvalidNameException;
+use OpenSpout\Writer\Exception\Border\InvalidStyleException;
+use OpenSpout\Writer\Exception\Border\InvalidWidthException;
 use OpenSpout\Writer\Exception\InvalidSheetNameException;
 use OpenSpout\Writer\Exception\WriterNotOpenedException;
 use OpenSpout\Writer\XLSX\Entity\SheetView;
@@ -398,6 +401,11 @@ class ExportMenu extends GridView
      * @var boolean whether to auto-size the excel output column widths. Defaults to `true`.
      */
     public $autoWidth = true;
+
+    /**
+     * @var array The number of characters for each column - used to approximate an autoWidth for openspout
+     */
+    protected $autoWidthColumns = [];
 
     /**
      * @var string encoding for the downloaded file header. Defaults to [[ENCODING_UTF8]].
@@ -868,7 +876,11 @@ class ExportMenu extends GridView
             $writer->save($file);
         }
         if ($this->_objExcelWriter !== null){
-            // TODO autoWidth equivalent for Openspout
+            if ($this->autoWidth) {
+                foreach ($this->autoWidthColumns as $n => $width) {
+                    $this->_objExcelOptions->setColumnWidth($width, $n);
+                }
+            }
             $this->_objExcelWriter->close();
         }
         if ($this->stream) {
@@ -1335,6 +1347,9 @@ class ExportMenu extends GridView
      * @throws IOException
      * @throws InvalidArgumentException
      * @throws WriterNotOpenedException
+     * @throws InvalidNameException
+     * @throws InvalidStyleException
+     * @throws InvalidWidthException
      */
     public function generateHeader()
     {
@@ -1374,6 +1389,7 @@ class ExportMenu extends GridView
                 if (!empty($format)) {
                     $style->setFormat($format);
                 }
+                $this->autoWidthColumns[$this->_endCol] = strlen((string)$head);
                 $openspoutCells[] = OpenspoutCell::fromValue($head, $style);
             }
         }
@@ -1622,6 +1638,7 @@ class ExportMenu extends GridView
                     $opts = $this->getAutoFormattedOpts($model, $key, $index, $column);
                     $style = OpenspoutHelper::createStyleFromPhpSpreadsheetOptions($opts);
                 }
+                $this->autoWidthColumns[$this->_endCol] = max(strlen($value), $this->autoWidthColumns[$this->_endCol]);
                 $openspoutCells[] = OpenspoutCell::fromValue($value, $style);
             }
         }
@@ -1648,7 +1665,7 @@ class ExportMenu extends GridView
         $this->_endCol = 0;
         $openspoutCells = [];
         foreach ($this->getVisibleColumns() as $column) {
-            $this->_endCol = $this->_endCol + 1;
+            $this->_endCol++;
             if ($column->footer) {
                 $footerExists = true;
                 $footer = trim($column->footer) !== '' ? $column->footer : $column->grid->blankDisplay;
@@ -1665,6 +1682,7 @@ class ExportMenu extends GridView
                 if ($this->_objExcelWriter !== null) {
                     $style = new Style();
                     $style->setFormat($format);
+                    $this->autoWidthColumns[$this->_endCol] = max(strlen($footer), $this->autoWidthColumns[$this->_endCol]);
                     $openspoutCells[] = OpenspoutCell::fromValue($footer, $style);
                 }
             } elseif ($this->_objExcelWriter !== null) {
@@ -2315,6 +2333,7 @@ class ExportMenu extends GridView
                     $this->_groupedColumn[$endCol]['firstLine'] = $index;
                 }
                 $this->_groupedColumn[$endCol]['value'] = $nextValue;
+                $this->autoWidthColumns[$endCol] = max(strlen($nextValue), $this->autoWidthColumns[$endCol]);
             }
             $endCol++;
         }
