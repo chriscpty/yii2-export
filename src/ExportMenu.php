@@ -878,7 +878,7 @@ class ExportMenu extends GridView
         if ($this->_objExcelWriter !== null){
             if ($this->autoWidth) {
                 foreach ($this->autoWidthColumns as $n => $width) {
-                    $this->_objExcelOptions->setColumnWidth($width, $n);
+                    $this->_objExcelOptions->setColumnWidth($width * 1.2, $n);
                 }
             }
             $this->_objExcelWriter->close();
