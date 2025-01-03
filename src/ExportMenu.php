@@ -15,6 +15,20 @@ use kartik\base\TranslationTrait;
 use kartik\dialog\Dialog;
 use kartik\dynagrid\Dynagrid;
 use kartik\grid\GridView;
+use OpenSpout\Common\Entity\Cell as OpenspoutCell;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Style;
+use OpenSpout\Common\Exception\InvalidArgumentException;
+use OpenSpout\Common\Exception\IOException;
+use OpenSpout\Writer\Common\Entity\Sheet;
+use OpenSpout\Writer\CSV\Options as OpenspoutCsvOptions;
+use OpenSpout\Writer\CSV\Writer as OpenspoutCsvWriter;
+use OpenSpout\Writer\Exception\InvalidSheetNameException;
+use OpenSpout\Writer\Exception\WriterNotOpenedException;
+use OpenSpout\Writer\XLSX\Entity\SheetView;
+use OpenSpout\Writer\XLSX\Options;
+use OpenSpout\Writer\XLSX\Properties;
+use OpenSpout\Writer\XLSX\Writer;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -637,17 +651,32 @@ class ExportMenu extends GridView
     /**
      * @var Spreadsheet object instance
      */
-    protected $_objSpreadsheet;
+    protected $_objSpreadsheet = null;
 
     /**
      * @var BaseWriter object instance
      */
-    protected $_objWriter;
+    protected $_objWriter = null;
 
     /**
      * @var Worksheet object instance
      */
-    protected $_objWorksheet;
+    protected $_objWorksheet = null;
+
+    /**
+     * @var Writer|OpenspoutCsvWriter object instance
+     */
+    protected $_objExcelWriter = null;
+
+    /**
+     * @var Options|OpenspoutCsvOptions object instance
+     */
+    protected $_objExcelOptions = null;
+
+    /**
+     * @var Sheet object instance
+     */
+    protected $_objExcelSheet = null;
 
     /**
      * @var integer the header beginning row
@@ -720,6 +749,23 @@ class ExportMenu extends GridView
     }
 
     /**
+     * Determine the target directory for this export.
+     * @param $config
+     * @return string
+     */
+    public function getTargetDirectory($config)
+    {
+        $this->folder = trim(Yii::getAlias($this->folder));
+        if (!file_exists($this->folder) && !mkdir($this->folder, 0777, true)) {
+            throw new InvalidConfigException(
+                "Invalid permissions to write to '{$this->folder}' as set in `ExportMenu::folder` property."
+            );
+        }
+        $filename = static::sanitize($this->filename);
+        return self::slash($this->folder).$filename.'.'.$config['extension'];
+    }
+
+    /**
      * Returns an excel column name.
      *
      * @param  integer  $index  the column index number
@@ -767,14 +813,25 @@ class ExportMenu extends GridView
             set_time_limit($this->timeout);
         }
         $config = ArrayHelper::getValue($this->exportConfig, $this->_exportType, []);
-        if (empty($config['writer'])) {
-            throw new InvalidConfigException(
-                "The 'writer' setting for '\PhpOffice\PhpSpreadsheet\Spreadsheet' must be setup in 'exportConfig'."
-            );
+        $file = $this->getTargetDirectory($config);
+        // specifically check for data validation because openspout does not support that - so if we have data validation, we'll have to fall back to PHPSpreadsheet
+        // as well as onInit and onRender hooks, because those expect to be used with phpspreadsheet
+        if (in_array($this->_exportType, [self::FORMAT_EXCEL_X, self::FORMAT_CSV]) && empty($this->dataValidation)
+            && empty($this->onInitExcel) && empty($this->onInitSheet) && empty($this->onInitWriter)
+            && empty($this->onRenderHeaderCell) && empty($this->onRenderDataCell) && empty($this->onRenderFooterCell) && empty($this->onRenderSheet)) {
+            $this->initOpenspout();
+            $this->initOpenspoutSheetView();
+            $this->_objExcelWriter->openToFile($file);
+        } else {
+            if (empty($config['writer'])) {
+                throw new InvalidConfigException(
+                    "The 'writer' setting for '\PhpOffice\PhpSpreadsheet\Spreadsheet' must be setup in 'exportConfig'."
+                );
+            }
+            $this->initPhpSpreadsheet();
+            $this->initPhpSpreadsheetWriter($config['writer']);
+            $this->initPhpSpreadsheetWorksheet();
         }
-        $this->initPhpSpreadsheet();
-        $this->initPhpSpreadsheetWriter($config['writer']);
-        $this->initPhpSpreadsheetWorksheet();
         $this->generateBeforeContent();
         $this->generateHeader();
         $this->generateBody();
@@ -788,29 +845,32 @@ class ExportMenu extends GridView
         if (!empty($this->supplementSheets)) {
             $this->createSupplementSheets();
         }
-        $this->_objSpreadsheet->setActiveSheetIndex(0)->setTitle($this->sheetName);
+        if ($this->_objSpreadsheet !== null) {
+            $this->_objSpreadsheet->setActiveSheetIndex(0)->setTitle($this->sheetName);
+        }
+        if ($this->_objExcelWriter !== null) {
+            $this->_objExcelWriter->setCurrentSheet($this->_objExcelSheet);
+        }
         $row = $this->generateFooter();
         $this->generateAfterContent($row);
-        $writer = $this->_objWriter;
-        $sheet = $this->_objWorksheet;
-        if ($this->autoWidth) {
-            foreach ($this->getVisibleColumns() as $n => $column) {
-                $sheet->getColumnDimension(self::columnName($n + 1))->setAutoSize(true);
+        if ($this->_objWriter !== null) {
+            $writer = $this->_objWriter;
+            $sheet = $this->_objWorksheet;
+            if ($this->autoWidth) {
+                foreach ($this->getVisibleColumns() as $n => $column) {
+                    $sheet->getColumnDimension(self::columnName($n + 1))->setAutoSize(true);
+                }
             }
+            $this->raiseEvent('onRenderSheet', [$sheet, $this]);
+            if ($this->stream) {
+                $this->clearOutputBuffers();
+            }
+            $writer->save($file);
         }
-        $this->raiseEvent('onRenderSheet', [$sheet, $this]);
-        $this->folder = trim(Yii::getAlias($this->folder));
-        if (!file_exists($this->folder) && !mkdir($this->folder, 0777, true)) {
-            throw new InvalidConfigException(
-                "Invalid permissions to write to '{$this->folder}' as set in `ExportMenu::folder` property."
-            );
+        if ($this->_objExcelWriter !== null){
+            // TODO autoWidth equivalent for Openspout
+            $this->_objExcelWriter->close();
         }
-        $filename = static::sanitize($this->filename);
-        $file = self::slash($this->folder).$filename.'.'.$config['extension'];
-        if ($this->stream) {
-            $this->clearOutputBuffers();
-        }
-        $writer->save($file);
         if ($this->stream) {
             $this->setHttpHeaders();
             $this->clearOutputBuffers();
@@ -897,25 +957,37 @@ class ExportMenu extends GridView
     /**
      * Create supplement sheets, usually from dropDownList used by gridView. Needed for using dataValidation.
      *
-     * @throws \PhpOffice\PhpSpreadsheet\Exception
+     * @throws IOException
+     * @throws WriterNotOpenedException
+     * @throws InvalidSheetNameException
      */
     public function createSupplementSheets()
     {
-        if ($this->_exportType != self::FORMAT_EXCEL && $this->_exportType != self::FORMAT_EXCEL_X) {
+        if ($this->_exportType !== self::FORMAT_EXCEL && $this->_exportType !== self::FORMAT_EXCEL_X) {
             return;
         }
         $sheetIndex = 1;
         foreach ($this->supplementSheets as $sheetName => $sheetData) {
-            // sheet index & name
-            $this->_objSpreadsheet->createSheet($sheetIndex);
-            $sheet = $this->_objSpreadsheet->setActiveSheetIndex($sheetIndex)->setTitle($sheetName);
-            $sheetIndex++;
-            // generate header
-            $sheet->setCellValue('A1', Yii::t('kvexport', 'Key'))->setCellValue('B1', Yii::t('kvexport', 'Value'));
-            // generate body
-            $index = 2;
-            foreach ($sheetData as $key => $value) {
-                $sheet->setCellValue('A'.$index, $key)->setCellValue('B'.$index++, $value);
+            if ($this->_objSpreadsheet !== null) {
+                // sheet index & name
+                $this->_objSpreadsheet->createSheet($sheetIndex);
+                $sheet = $this->_objSpreadsheet->setActiveSheetIndex($sheetIndex)->setTitle($sheetName);
+                $sheetIndex++;
+                // generate header
+                $sheet->setCellValue('A1', Yii::t('kvexport', 'Key'))->setCellValue('B1', Yii::t('kvexport', 'Value'));
+                // generate body
+                $index = 2;
+                foreach ($sheetData as $key => $value) {
+                    $sheet->setCellValue('A' . $index, $key)->setCellValue('B' . $index++, $value);
+                }
+            }
+            if ($this->_objExcelWriter !== null) {
+                $newSheet = $this->_objExcelWriter->addNewSheetAndMakeItCurrent();
+                $newSheet->setName($sheetName);
+                $this->_objExcelWriter->addRow(Row::fromValues([OpenspoutCell::fromValue(Yii::t('kvexport', 'Key')), OpenspoutCell::fromValue(Yii::t('kvexport', 'Value'))]));
+                foreach ($sheetData as $key => $value) {
+                    $this->_objExcelWriter->addRow(Row::fromValues([$key, $value]));
+                }
             }
         }
     }
@@ -1116,6 +1188,54 @@ class ExportMenu extends GridView
     }
 
     /**
+     * Initializes Openspout Object Instance
+     */
+    public function initOpenspout()
+    {
+        if ($this->_exportType === self::FORMAT_EXCEL_X) {
+            // TODO decide: Fall back to PHPSpreadsheet if one of the docProperties not supported by openspout is set to prevent breakage?
+            $creator = $title = $subject = $category = $keywords = '';
+            $description = Yii::t('kvexport', 'Grid export generated by Krajee ExportMenu widget (yii2-export)');
+            $lastModifiedBy = 'krajee';
+            extract($this->docProperties);
+            $properties = new Properties(
+                title: $title,
+                subject: $subject,
+                creator: $creator,
+                lastModifiedBy: $lastModifiedBy,
+                keywords: $keywords,
+                description: $description,
+                category: $category
+            );
+            $this->_objExcelOptions = new Options();
+            $this->_objExcelOptions->setProperties($properties);
+            $this->_objExcelWriter = new Writer($this->_objExcelOptions);
+        } else {
+            $this->_objExcelOptions = new OpenspoutCsvOptions();
+            $this->_objExcelOptions->FIELD_DELIMITER = $this->getSetting('delimiter', "\t");
+            $this->_objExcelWriter = new OpenspoutCsvWriter($this->_objExcelOptions);
+        }
+    }
+
+    /**
+     * Initialise the Openspout sheet view.
+     * @return void
+     * @throws InvalidArgumentException
+     * @throws WriterNotOpenedException
+     */
+    public function initOpenspoutSheetView()
+    {
+        if ($this->exportType !== self::FORMAT_EXCEL_X) {
+            return;
+        }
+        $sheetView = new SheetView();
+        // freeze header row
+        $sheetView->setFreezeRow(2 + count($this->contentBefore));
+        $this->_objExcelSheet = $this->_objExcelWriter->getCurrentSheet();
+        $this->_objExcelSheet->setSheetView($sheetView);
+    }
+
+    /**
      * Initializes PhpSpreadsheet Object Instance
      */
     public function initPhpSpreadsheet()
@@ -1194,16 +1314,24 @@ class ExportMenu extends GridView
         $sheet = $this->_objWorksheet;
         foreach ($this->contentBefore as $contentBefore) {
             $format = ArrayHelper::getValue($contentBefore, 'cellFormat');
-            $this->setOutCellValue($sheet, $colFirst.$this->_beginRow, $contentBefore['value'], $format);
             $opts = $this->getStyleOpts($contentBefore);
-            $sheet->getStyle($colFirst.$this->_beginRow)->applyFromArray($opts);
-            $this->_beginRow += 1;
+            if ($sheet !== null) {
+                $this->setOutCellValue($sheet, $colFirst . $this->_beginRow, $contentBefore['value'], $format);
+                $sheet->getStyle($colFirst.$this->_beginRow)->applyFromArray($opts);
+            }
+            if ($this->_objExcelWriter !== null) {
+                $cell = OpenspoutCell::fromValue($contentBefore['value'], OpenspoutHelper::createStyleFromPhpSpreadsheetOptions($opts));
+                $this->_objExcelWriter->addRow(new Row([$cell]));
+            }
+            $this->_beginRow++;
         }
     }
 
     /**
      * Generates the output data header content.
-     * @throws \PhpOffice\PhpSpreadsheet\Exception
+     * @throws IOException
+     * @throws InvalidArgumentException
+     * @throws WriterNotOpenedException
      */
     public function generateHeader()
     {
@@ -1216,28 +1344,46 @@ class ExportMenu extends GridView
         $colFirst = self::columnName(1);
 
         $this->_endCol = 0;
-        foreach ($this->getVisibleColumns() as $column) {
+        $openspoutCells = [];
+        foreach ($columns as $column) {
             $opts = $styleOpts;
             $this->_endCol++;
             /**
              * @var DataColumn $column
              */
             $head = ($column instanceof DataColumn) ? $this->getColumnHeader($column) : $column->header;
-            $id = self::columnName($this->_endCol).$this->_beginRow;
             $format = ArrayHelper::remove($column->headerOptions, 'cellFormat');
-            $cell = $this->setOutCellValue($sheet, $id, $head, $format);
             if (isset($column->hAlign) && !isset($opts['alignment']['horizontal'])) {
                 $opts['alignment']['horizontal'] = $column->hAlign;
             }
             if (isset($column->vAlign) && !isset($opts['alignment']['vertical'])) {
                 $opts['alignment']['vertical'] = $column->vAlign;
             }
-            // Apply formatting to header cell
-            $sheet->getStyle($id)->applyFromArray($opts);
-            $this->raiseEvent('onRenderHeaderCell', [$cell, $head, $this]);
+            if ($sheet !== null) {
+                $id = self::columnName($this->_endCol).$this->_beginRow;
+                $cell = $this->setOutCellValue($sheet, $id, $head, $format);
+                // Apply formatting to header cell
+                $sheet->getStyle($id)->applyFromArray($opts);
+                $this->raiseEvent('onRenderHeaderCell', [$cell, $head, $this]);
+            }
+            if ($this->_objExcelWriter !== null) {
+                $style = OpenspoutHelper::createStyleFromPhpSpreadsheetOptions($opts);
+                if (!empty($format)) {
+                    $style->setFormat($format);
+                }
+                $openspoutCells[] = OpenspoutCell::fromValue($head, $style);
+            }
+        }
+        if ($this->_objExcelWriter !== null) {
+            $this->_objExcelWriter->addRow(new Row($openspoutCells));
         }
         for ($i = $this->_headerBeginRow; $i < ($this->_beginRow); $i++) {
-            $sheet->mergeCells($colFirst.$i.':'.self::columnName($this->_endCol).$i);
+            if ($sheet !== null) {
+                $sheet->mergeCells($colFirst . $i . ':' . self::columnName($this->_endCol) . $i);
+            }
+            if ($this->_objExcelOptions !== null) {
+                $this->_objExcelOptions->mergeCells(0, $i, $this->_endCol - 1, $i, $this->_objExcelSheet->getIndex());
+            }
         }
 
         // Freeze the top row
@@ -1327,7 +1473,9 @@ class ExportMenu extends GridView
      * Generates the output data body content.
      *
      * @return integer the number of output rows.
-     * @throws \PhpOffice\PhpSpreadsheet\Exception
+     * @throws InvalidArgumentException
+     * @throws IOException
+     * @throws WriterNotOpenedException
      */
     public function generateBody()
     {
@@ -1335,9 +1483,14 @@ class ExportMenu extends GridView
         $columns = $this->getVisibleColumns();
         $models = array_values($this->_provider->getModels());
         if (count($columns) == 0) {
-            $cell = $this->setOutCellValue($this->_objWorksheet, 'A1', $this->emptyText);
-            $model = reset($models);
-            $this->raiseEvent('onRenderDataCell', [$cell, $this->emptyText, $model, null, 0, $this]);
+            if ($this->_objWorksheet !== null) {
+                $cell = $this->setOutCellValue($this->_objWorksheet, 'A1', $this->emptyText);
+                $model = reset($models);
+                $this->raiseEvent('onRenderDataCell', [$cell, $this->emptyText, $model, null, 0, $this]);
+            }
+            if ($this->_objExcelWriter !== null) {
+                $this->_objExcelWriter->addRow(Row::fromValues([$this->emptyText]));
+            }
 
             return 0;
         }
@@ -1361,9 +1514,18 @@ class ExportMenu extends GridView
                 }
                 if (!is_null($this->_groupedRow)) {
                     $this->_endRow++;
-                    $this->_objWorksheet->fromArray($this->_groupedRow, null, 'A'.($this->_endRow + 1), true);
-                    $cell = 'A'.($this->_endRow + 1).':'.self::columnName(count($columns)).($this->_endRow + 1);
-                    $this->_objWorksheet->getStyle($cell)->applyFromArray($this->groupedRowStyle);
+                    if ($this->_objWorksheet !== null) {
+                        $this->_objWorksheet->fromArray($this->_groupedRow, null, 'A' . ($this->_endRow + 1), true);
+                        $cell = 'A' . ($this->_endRow + 1) . ':' . self::columnName(count($columns)) . ($this->_endRow + 1);
+                        $this->_objWorksheet->getStyle($cell)->applyFromArray($this->groupedRowStyle);
+                    }
+                    if ($this->_objExcelWriter !== null) {
+                        $groupedRowStyle = OpenspoutHelper::createStyleFromPhpSpreadsheetOptions($this->groupedRowStyle);
+                        $cells = array_map(static function ($value) use ($groupedRowStyle) {
+                            return OpenspoutCell::fromValue($value, $groupedRowStyle);
+                        }, $this->_groupedRow);
+                        $this->_objExcelWriter->addRow(new Row($cells));
+                    }
                     $this->_groupedRow = null;
                 }
             }
@@ -1376,7 +1538,9 @@ class ExportMenu extends GridView
                 $models = [];
             }
         }
-        $this->generateBox();
+        if ($this->_objSpreadsheet !== null) {
+            $this->generateBox();
+        }
 
         return $this->_endRow;
     }
@@ -1384,10 +1548,12 @@ class ExportMenu extends GridView
     /**
      * Generates an output data row with the given data model and key.
      *
-     * @param  mixed  $model  the data model to be rendered
-     * @param  mixed  $key  the key associated with the data model
-     * @param  integer  $index  the zero-based index of the data model among the model array returned by [[dataProvider]].
-     * @throws \PhpOffice\PhpSpreadsheet\Exception
+     * @param mixed $model the data model to be rendered
+     * @param mixed $key the key associated with the data model
+     * @param integer $index the zero-based index of the data model among the model array returned by [[dataProvider]].
+     * @throws IOException
+     * @throws InvalidArgumentException
+     * @throws WriterNotOpenedException
      */
     public function generateRow($model, $key, $index)
     {
@@ -1395,6 +1561,7 @@ class ExportMenu extends GridView
          * @var Column $column
          */
         $this->_endCol = 0;
+        $openspoutCells = [];
         foreach ($this->getVisibleColumns() as $column) {
             $format = $this->enableFormatter && isset($column->format) ? $column->format : 'raw';
             $value = null;
@@ -1429,16 +1596,31 @@ class ExportMenu extends GridView
                 $format = null;
             }
 
-            $cell = $this->setOutCellValue(
-                $this->_objWorksheet,
-                self::columnName($this->_endCol).($index + $this->_beginRow + 1),
-                $value,
-                $format
-            );
-            if ($this->enableAutoFormat && $format === null) {
-                $this->autoFormat($model, $key, $index, $column, $cell);
+            if ($this->_objWorksheet !== null) {
+                $cell = $this->setOutCellValue(
+                    $this->_objWorksheet,
+                    self::columnName($this->_endCol).($index + $this->_beginRow + 1),
+                    $value,
+                    $format
+                );
+                if ($this->enableAutoFormat && $format === null) {
+                    $this->autoFormat($model, $key, $index, $column, $cell);
+                }
+            }
+            if ($this->_objExcelWriter !== null) {
+                $style = new Style();
+                if ($format !== null) {
+                    $style->setFormat($format);
+                } elseif ($this->enableAutoFormat) {
+                    $opts = $this->getAutoFormattedOpts($model, $key, $index, $column);
+                    $style = OpenspoutHelper::createStyleFromPhpSpreadsheetOptions($opts);
+                }
+                $openspoutCells[] = OpenspoutCell::fromValue($value, $style);
             }
             $this->raiseEvent('onRenderDataCell', [$cell, $value, $model, $key, $index, $this]);
+        }
+        if ($this->_objExcelWriter !== null) {
+            $this->_objExcelWriter->addRow(new Row($openspoutCells));
         }
     }
 
@@ -1446,7 +1628,8 @@ class ExportMenu extends GridView
      * Generates the output footer row after a specific row number
      *
      * @return integer the row number after which the footer is to be generated
-     * @throws \PhpOffice\PhpSpreadsheet\Exception
+     * @throws IOException
+     * @throws WriterNotOpenedException
      */
     public function generateFooter()
     {
@@ -1457,23 +1640,36 @@ class ExportMenu extends GridView
             return 0;
         }
         $this->_endCol = 0;
+        $openspoutCells = [];
         foreach ($this->getVisibleColumns() as $column) {
             $this->_endCol = $this->_endCol + 1;
             if ($column->footer) {
                 $footerExists = true;
                 $footer = trim($column->footer) !== '' ? $column->footer : $column->grid->blankDisplay;
                 $format = ArrayHelper::remove($column->footerOptions, 'cellFormat');
-                $cell = $this->setOutCellValue(
-                    $this->_objSpreadsheet->getActiveSheet(),
-                    self::columnName($this->_endCol).($row + 1),
-                    $footer,
-                    $format
-                );
-                $this->raiseEvent('onRenderFooterCell', [$cell, $footer, $this]);
+                if ($this->_objSpreadsheet !== null) {
+                    $cell = $this->setOutCellValue(
+                        $this->_objSpreadsheet->getActiveSheet(),
+                        self::columnName($this->_endCol) . ($row + 1),
+                        $footer,
+                        $format
+                    );
+                    $this->raiseEvent('onRenderFooterCell', [$cell, $footer, $this]);
+                }
+                if ($this->_objExcelWriter !== null) {
+                    $style = new Style();
+                    $style->setFormat($format);
+                    $openspoutCells[] = OpenspoutCell::fromValue($footer, $style);
+                }
+            } elseif ($this->_objExcelWriter !== null) {
+                $openspoutCells[] = OpenspoutCell::fromValue('');
             }
         }
         if ($footerExists) {
             $row++;
+            if ($this->_objExcelWriter !== null) {
+                $this->_objExcelWriter->addRow(new Row($openspoutCells));
+            }
         }
 
         return $row;
@@ -1482,8 +1678,10 @@ class ExportMenu extends GridView
     /**
      * Generates the after content at the bottom of the exported sheet
      *
-     * @param  integer  $row  the row number after which the content is to be generated
-     * @throws \PhpOffice\PhpSpreadsheet\Exception
+     * @param integer $row the row number after which the content is to be generated
+     * @throws IOException
+     * @throws InvalidArgumentException
+     * @throws WriterNotOpenedException
      */
     public function generateAfterContent($row)
     {
@@ -1493,13 +1691,24 @@ class ExportMenu extends GridView
         $sheet = $this->_objWorksheet;
         foreach ($this->contentAfter as $contentAfter) {
             $format = ArrayHelper::getValue($contentAfter, 'cellFormat');
-            $this->setOutCellValue($sheet, $colFirst.$row, $contentAfter['value'], $format);
             $opts = $this->getStyleOpts($contentAfter);
-            $sheet->getStyle($colFirst.$row)->applyFromArray($opts);
+            if ($sheet !== null) {
+                $this->setOutCellValue($sheet, $colFirst . $row, $contentAfter['value'], $format);
+                $sheet->getStyle($colFirst . $row)->applyFromArray($opts);
+            }
+            if ($this->_objExcelWriter !== null) {
+                $cell = OpenspoutCell::fromValue($contentAfter['value'], OpenspoutHelper::createStyleFromPhpSpreadsheetOptions($opts));
+                $this->_objExcelWriter->addRow(new Row([$cell]));
+            }
             $row += 1;
         }
         for ($i = $afterContentBeginRow; $i < $row; $i++) {
-            $sheet->mergeCells($colFirst.$i.':'.self::columnName($this->_endCol).$i);
+            if ($sheet !== null) {
+                $sheet->mergeCells($colFirst . $i . ':' . self::columnName($this->_endCol) . $i);
+            }
+            if ($this->_objExcelOptions !== null) {
+                $this->_objExcelOptions->mergeCells(0, $i, $this->_endCol - 1, $i, $this->_objExcelSheet->getIndex());
+            }
         }
     }
 
@@ -1666,6 +1875,21 @@ class ExportMenu extends GridView
     {
         $ord = $cell->getCoordinate();
         $style = $this->_objWorksheet->getStyle($ord);
+        $opts = $this->getAutoFormattedOpts($model, $key, $index, $column);
+        $style->applyFromArray($opts);
+    }
+
+    /**
+     * Autoformats a cell by auto detecting the grid column alignment and format
+     *
+     * @param mixed $model the data model to be rendered
+     * @param mixed $key the key associated with the data model
+     * @param integer $index the zero-based index of the data model among the model array returned by [[dataProvider]].
+     * @param Column $column
+     * @return array|mixed
+     */
+    protected function getAutoFormattedOpts($model, $key, $index, $column)
+    {
         $opts = ArrayHelper::getValue($this->styleOptions, $this->_exportType, []);
         if (isset($column->exportMenuStyle)) {
             $opts = $column->exportMenuStyle;
@@ -1691,7 +1915,7 @@ class ExportMenu extends GridView
                     $code = ArrayHelper::getValue($fmt, 1, $this->formatter->currencyCode).' ';
                 }
                 $decimals = ArrayHelper::getValue($fmt, 1, ($f === 'percent' ? 0 : 2));
-                $d = intval($decimals);
+                $d = (int)$decimals;
                 $code .= '#'.$this->formatter->thousandSeparator.'##0';
                 if ($d > 0) {
                     $code .= $this->formatter->decimalSeparator.str_repeat('0', $d);
@@ -1704,7 +1928,7 @@ class ExportMenu extends GridView
                 $opts['numberFormat'] = ['formatCode' => $code];
             }
         }
-        $style->applyFromArray($opts);
+        return $opts;
     }
 
     /**
@@ -2105,14 +2329,19 @@ class ExportMenu extends GridView
         $fLine = ($fLine == $this->_beginRow) ? $this->_beginRow + 1 : ($fLine + 3);
         $firstLine = ($this->_endRow == ($this->_beginRow + 3) && $fLine == 2) ? $this->_beginRow + 3 : $fLine;
         $endLine = $this->_endRow + 1;
-        list($endLine, $firstLine) = ($endLine > $firstLine) ? [$endLine, $firstLine] : [$firstLine, $endLine];
+        [$endLine, $firstLine] = ($endLine > $firstLine) ? [$endLine, $firstLine] : [$firstLine, $endLine];
         foreach ($this->getVisibleColumns() as $key => $column) {
             $value = $groupFooter[$key] ?? '';
             //$endGroupedCol++;
             $groupedRange = self::columnName($key + 1).$firstLine.':'.self::columnName($key + 1).$endLine;
             //$lastCell = self::columnName($key + 1) . $endLine - 1;
             if (isset($column->group) && $column->group) {
-                $this->_objWorksheet->mergeCells($groupedRange);
+                if ($this->_objWorksheet !== null) {
+                    $this->_objWorksheet->mergeCells($groupedRange);
+                }
+                if ($this->_objExcelWriter !== null) {
+                    $this->_objExcelOptions->mergeCells($key, $firstLine, $key, $endLine, $this->_objExcelSheet->getIndex());
+                }
             }
             switch ($value) {
                 case self::F_SUM:
