@@ -86,7 +86,9 @@ class OpenspoutHelper
                     $borderParts[] = new BorderPart($name, $color, $width, $style);
                 }
             }
-            $style->setBorder(new Border(...$borderParts));
+            if (!empty($borderParts)) {
+                $style->setBorder(new Border(...$borderParts));
+            }
         }
         if (isset($opts['fill']['fillType']) && $opts['fill']['fillType'] === 'solid') {
             $color = $opts['fill']['color'];

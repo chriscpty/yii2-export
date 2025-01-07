@@ -29,8 +29,8 @@ use OpenSpout\Writer\Exception\Border\InvalidStyleException;
 use OpenSpout\Writer\Exception\Border\InvalidWidthException;
 use OpenSpout\Writer\Exception\InvalidSheetNameException;
 use OpenSpout\Writer\Exception\WriterNotOpenedException;
-use Openspout\Writer\ODS\Options as OpenspoutOdsOptions;
-use Openspout\Writer\ODS\Writer as OpenspoutOdsWriter;
+use OpenSpout\Writer\ODS\Options as OpenspoutOdsOptions;
+use OpenSpout\Writer\ODS\Writer as OpenspoutOdsWriter;
 use OpenSpout\Writer\XLSX\Entity\SheetView;
 use OpenSpout\Writer\XLSX\Options;
 use OpenSpout\Writer\XLSX\Properties;
@@ -909,7 +909,9 @@ class ExportMenu extends GridView
         if ($this->_objOpenspoutWriter !== null){
             if ($this->autoWidth && ($this->_objOpenspoutOptions instanceof AbstractOptions)) {
                 foreach ($this->autoWidthColumns as $n => $width) {
-                    $this->_objOpenspoutOptions->setColumnWidth($width * 1.2, $n);
+                    // ODS and XLSX files scale widths differently, so use different scaling factor
+                    $factor = $this->_exportType === self::FORMAT_ODS ? 6.0 : 1.2;
+                    $this->_objOpenspoutOptions->setColumnWidth($width * $factor, $n);
                 }
             }
             $this->_objOpenspoutWriter->close();
@@ -2208,7 +2210,7 @@ class ExportMenu extends GridView
             ],
             self::FORMAT_ODS => [
                 'label' => Yii::t('kvexport', 'OpenOffice'),
-                'icon' => $notBs3 ? 'fas fa-file-excel' : ($isFa ? 'fa fa-file-excel-o' : 'glyphicon glyphicon-floppy-remove'),
+                'icon' => $notBs3 ? 'fas fa-file-alt' : ($isFa ? 'fa fa-file-text' : 'glyphicon glyphicon-save'),
                 'iconOptions' => ['class' => 'text-success'],
                 'linkOptions' => [],
                 'options' => ['title' => Yii::t('kvexport', 'OpenOffice (ods)')],
