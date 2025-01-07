@@ -33,6 +33,7 @@ return [
     'Input error' => '',
     'Key' => '',
     'Microsoft Excel 2007+ (xlsx)' => '',
+    'OpenOffice (ods)' => '',
     'Microsoft Excel 95+ (xls)' => '',
     'Ok to proceed?' => '',
     'PDF' => '',
@@ -49,7 +50,7 @@ return [
     'The EXCEL 95+ (xls) export file will be generated for download.' => '',
     'The HTML export file will be generated for download.' => '',
     'The PDF export file will be generated for download.' => '',
-    'The TEXT export file will be generated for download.' => '',
+    'The TEXT export file will be generated for download.' => ''
     'Value' => '',
     'Value is not in list.' => '',
     'grid-export' => '',

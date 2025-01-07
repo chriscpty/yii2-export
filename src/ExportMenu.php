@@ -20,6 +20,7 @@ use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Style;
 use OpenSpout\Common\Exception\InvalidArgumentException;
 use OpenSpout\Common\Exception\IOException;
+use OpenSpout\Writer\Common\AbstractOptions;
 use OpenSpout\Writer\Common\Entity\Sheet;
 use OpenSpout\Writer\CSV\Options as OpenspoutCsvOptions;
 use OpenSpout\Writer\CSV\Writer as OpenspoutCsvWriter;
@@ -29,6 +30,7 @@ use OpenSpout\Writer\Exception\Border\InvalidWidthException;
 use OpenSpout\Writer\Exception\InvalidSheetNameException;
 use OpenSpout\Writer\Exception\WriterNotOpenedException;
 use Openspout\Writer\ODS\Options as OpenspoutOdsOptions;
+use Openspout\Writer\ODS\Writer as OpenspoutOdsWriter;
 use OpenSpout\Writer\XLSX\Entity\SheetView;
 use OpenSpout\Writer\XLSX\Options;
 use OpenSpout\Writer\XLSX\Properties;
@@ -905,7 +907,7 @@ class ExportMenu extends GridView
             $writer->save($file);
         }
         if ($this->_objOpenspoutWriter !== null){
-            if ($this->autoWidth) {
+            if ($this->autoWidth && ($this->_objOpenspoutOptions instanceof AbstractOptions)) {
                 foreach ($this->autoWidthColumns as $n => $width) {
                     $this->_objOpenspoutOptions->setColumnWidth($width * 1.2, $n);
                 }
@@ -1004,7 +1006,7 @@ class ExportMenu extends GridView
      */
     public function createSupplementSheets()
     {
-        if ($this->_exportType !== self::FORMAT_EXCEL && $this->_exportType !== self::FORMAT_EXCEL_X) {
+        if (!in_array($this->_exportType, [self::FORMAT_EXCEL, self::FORMAT_EXCEL_X, self::FORMAT_ODS])) {
             return;
         }
         $sheetIndex = 1;
@@ -1044,6 +1046,9 @@ class ExportMenu extends GridView
     public function setDataValidation($sheetName, $cell, $length)
     {
         if ($this->_exportType != self::FORMAT_EXCEL && $this->_exportType != self::FORMAT_EXCEL_X) {
+            return;
+        }
+        if ($this->_objSpreadsheet === null) {
             return;
         }
         $objValidation = $this->_objSpreadsheet->getActiveSheet()->getCell($cell)->getDataValidation();
@@ -1255,6 +1260,7 @@ class ExportMenu extends GridView
             $this->_objOpenspoutWriter = new Writer($this->_objOpenspoutOptions);
         } elseif ($this->_exportType === self::FORMAT_ODS) {
             $this->_objOpenspoutOptions = new OpenspoutOdsOptions();
+            $this->_objOpenspoutWriter = new OpenspoutOdsWriter($this->_objOpenspoutOptions);
         } else {
             $this->_objOpenspoutOptions = new OpenspoutCsvOptions();
             $this->_objOpenspoutOptions->FIELD_DELIMITER = $this->getSetting('delimiter', "\t");
@@ -1270,7 +1276,7 @@ class ExportMenu extends GridView
      */
     public function initOpenspoutSheetView()
     {
-        if ($this->exportType !== self::FORMAT_EXCEL_X) {
+        if (!in_array($this->_exportType, [self::FORMAT_EXCEL_X, self::FORMAT_ODS])) {
             return;
         }
         $sheetView = new SheetView();
@@ -1880,6 +1886,7 @@ class ExportMenu extends GridView
             self::FORMAT_PDF => $defaultStyle,
             self::FORMAT_EXCEL => $defaultStyle,
             self::FORMAT_EXCEL_X => $defaultStyle,
+            self::FORMAT_ODS => $defaultStyle,
         ];
         $this->$opts = array_replace_recursive($defaultStyleOptions, $this->$opts);
     }
@@ -2198,6 +2205,17 @@ class ExportMenu extends GridView
                 'mime' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'extension' => 'xlsx',
                 'writer' => self::FORMAT_EXCEL_X,
+            ],
+            self::FORMAT_ODS => [
+                'label' => Yii::t('kvexport', 'OpenOffice'),
+                'icon' => $notBs3 ? 'fas fa-file-excel' : ($isFa ? 'fa fa-file-excel-o' : 'glyphicon glyphicon-floppy-remove'),
+                'iconOptions' => ['class' => 'text-success'],
+                'linkOptions' => [],
+                'options' => ['title' => Yii::t('kvexport', 'OpenOffice (ods)')],
+                'alertMsg' => Yii::t('kvexport', 'The OpenOffice export file will be generated for download.'),
+                'mime' => 'application/vnd.oasis.opendocument.spreadsheet',
+                'extension' => 'ods',
+                'writer' => self::FORMAT_ODS,
             ],
         ];
     }

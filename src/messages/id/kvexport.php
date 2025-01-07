@@ -43,6 +43,7 @@ return [
     'Input error' => '',
     'Key' => '',
     'Microsoft Excel 2007+ (xlsx)' => '',
+    'OpenOffice (ods)' => '',
     'Microsoft Excel 95+ (xls)' => '',
     'Ok to proceed?' => '',
     'PDF' => '',
