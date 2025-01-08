@@ -1562,9 +1562,6 @@ class ExportMenu extends GridView
         $this->findGroupedColumn();
         while (count($models) > 0) {
             $keys = $this->_provider->getKeys();
-            if ($this->_provider instanceof ArrayDataProvider) {
-                $models = array_values($models);
-            }
             foreach ($models as $index => $model) {
                 $key = $keys[$index];
                 $isLastRow = $index === $totalCount - 1;
@@ -1602,7 +1599,7 @@ class ExportMenu extends GridView
                 $this->_provider->pagination->page++;
                 $this->_provider->refresh();
                 $this->_provider->setTotalCount($totalCount);
-                $models = $this->_provider->getModels();
+                $models = array_values($this->_provider->getModels());
             } else {
                 $models = [];
             }
