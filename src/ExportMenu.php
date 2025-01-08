@@ -851,10 +851,10 @@ class ExportMenu extends GridView
         }
         $config = ArrayHelper::getValue($this->exportConfig, $this->_exportType, []);
         $file = $this->getTargetDirectory($config);
-        if (!in_array($this->_exportType, self::PHPSPREADSHEET_FORMATS)) {
+        if (!in_array($this->_exportType, self::PHPSPREADSHEET_FORMATS, true)) {
             $this->useOpenspout = true;
         }
-        if (!in_array($this->_exportType, self::OPENSPOUT_FORMATS)) {
+        if (!in_array($this->_exportType, self::OPENSPOUT_FORMATS, true)) {
             $this->useOpenspout = false;
         }
         if ($this->useOpenspout) {
@@ -1008,7 +1008,7 @@ class ExportMenu extends GridView
      */
     public function createSupplementSheets()
     {
-        if (!in_array($this->_exportType, [self::FORMAT_EXCEL, self::FORMAT_EXCEL_X, self::FORMAT_ODS])) {
+        if (!in_array($this->_exportType, [self::FORMAT_EXCEL, self::FORMAT_EXCEL_X, self::FORMAT_ODS], true)) {
             return;
         }
         $sheetIndex = 1;
@@ -1278,7 +1278,7 @@ class ExportMenu extends GridView
      */
     public function initOpenspoutSheetView()
     {
-        if (!in_array($this->_exportType, [self::FORMAT_EXCEL_X, self::FORMAT_ODS])) {
+        if (!in_array($this->_exportType, [self::FORMAT_EXCEL_X, self::FORMAT_ODS], true)) {
             return;
         }
         $sheetView = new SheetView();
@@ -1428,7 +1428,7 @@ class ExportMenu extends GridView
                 $this->raiseEvent('onRenderHeaderCell', [$cell, $head, $this]);
             }
             if ($this->_objOpenspoutWriter !== null) {
-                $style = OpenspoutHelper::createStyleFromPhpSpreadsheetOptions(array_merge_recursive($this->getBoxStyleArrayForCell($this->_endCol, true, false), $opts));
+                $style = OpenspoutHelper::createStyleFromPhpSpreadsheetOptions(array_replace_recursive($this->getBoxStyleArrayForCell($this->_endCol, true, false), $opts));
                 if (!empty($format)) {
                     $style->setFormat($format);
                 }
@@ -1567,7 +1567,7 @@ class ExportMenu extends GridView
             }
             foreach ($models as $index => $model) {
                 $key = $keys[$index];
-                $isLastRow = $index === $totalCount;
+                $isLastRow = $index === $totalCount - 1;
                 if ($isLastRow) {
                     //a little hack to generate last grouped footer
                     $this->checkGroupedRow($model, $models[0], $key, $this->_endRow + 1);
@@ -1586,7 +1586,7 @@ class ExportMenu extends GridView
                     if ($this->_objOpenspoutWriter !== null) {
                         $cells = array_map(function ($value, $idx) use ($isLastRow) {
                             $groupedRowStyle = OpenspoutHelper::createStyleFromPhpSpreadsheetOptions(
-                                array_merge_recursive(
+                                array_replace_recursive(
                                     $this->getBoxStyleArrayForCell($idx + 1, false, $isLastRow),
                                     $this->groupedRowStyle
                                 )
@@ -1684,7 +1684,7 @@ class ExportMenu extends GridView
             if ($this->_objOpenspoutWriter !== null) {
                 $opts = $this->getBoxStyleArrayForCell($this->_endCol, false, $isLastRow);
                 if ($format === null && $this->enableAutoFormat) {
-                    $opts = array_merge_recursive($opts, $this->getAutoFormattedOpts($model, $key, $index, $column));
+                    $opts = array_replace_recursive($opts, $this->getAutoFormattedOpts($model, $key, $index, $column));
                 }
                 $style = OpenspoutHelper::createStyleFromPhpSpreadsheetOptions($opts);
                 if ($format !== null) {
@@ -1951,7 +1951,7 @@ class ExportMenu extends GridView
         OpenspoutHelper::setInsideAndOutlineBorders($opts, $isHeader, $isLastRow, $col === 1, $col === count($this->getVisibleColumns()));
         if ($isHeader && isset($this->headerStyleOptions[$this->_exportType])) {
             unset($opts['borders']['inside'], $opts['borders']['outline']);
-            $opts = array_merge_recursive($opts, $this->headerStyleOptions[$this->_exportType]);
+            $opts = array_replace_recursive($opts, $this->headerStyleOptions[$this->_exportType]);
             OpenspoutHelper::setInsideAndOutlineBorders($opts, true, true, $col === 1, $col === count($this->getVisibleColumns()));
         }
         return $opts;
