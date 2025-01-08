@@ -17,6 +17,7 @@ use kartik\dynagrid\Dynagrid;
 use kartik\grid\GridView;
 use OpenSpout\Common\Entity\Cell as OpenspoutCell;
 use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Border as OpenspoutBorder;
 use OpenSpout\Common\Entity\Style\Style;
 use OpenSpout\Common\Exception\InvalidArgumentException;
 use OpenSpout\Common\Exception\IOException;
@@ -1359,7 +1360,12 @@ class ExportMenu extends GridView
 
     /**
      * Generates the before content at the top of the exported sheet
-     * @throws \PhpOffice\PhpSpreadsheet\Exception
+     * @throws IOException
+     * @throws InvalidArgumentException
+     * @throws InvalidNameException
+     * @throws InvalidStyleException
+     * @throws InvalidWidthException
+     * @throws WriterNotOpenedException
      */
     public function generateBeforeContent()
     {
@@ -1423,7 +1429,7 @@ class ExportMenu extends GridView
                 $this->raiseEvent('onRenderHeaderCell', [$cell, $head, $this]);
             }
             if ($this->_objOpenspoutWriter !== null) {
-                $style = OpenspoutHelper::createStyleFromPhpSpreadsheetOptions($opts);
+                $style = OpenspoutHelper::createStyleFromPhpSpreadsheetOptions(array_merge_recursive($this->getBoxStyleArrayForCell($this->_endCol, true, false), $opts));
                 if (!empty($format)) {
                     $style->setFormat($format);
                 }
@@ -1528,8 +1534,11 @@ class ExportMenu extends GridView
      * Generates the output data body content.
      *
      * @return integer the number of output rows.
-     * @throws InvalidArgumentException
      * @throws IOException
+     * @throws InvalidArgumentException
+     * @throws InvalidNameException
+     * @throws InvalidStyleException
+     * @throws InvalidWidthException
      * @throws WriterNotOpenedException
      */
     public function generateBody()
@@ -1559,14 +1568,15 @@ class ExportMenu extends GridView
             }
             foreach ($models as $index => $model) {
                 $key = $keys[$index];
-                $this->generateRow($model, $key, $this->_endRow);
-                $this->_endRow++;
-                if ($index === $totalCount) {
+                $isLastRow = $index === $totalCount;
+                if ($isLastRow) {
                     //a little hack to generate last grouped footer
-                    $this->checkGroupedRow($model, $models[0], $key, $this->_endRow);
+                    $this->checkGroupedRow($model, $models[0], $key, $this->_endRow + 1);
                 } elseif (isset($models[$index + 1])) {
-                    $this->checkGroupedRow($model, $models[$index + 1], $key, $this->_endRow);
+                    $this->checkGroupedRow($model, $models[$index + 1], $key, $this->_endRow + 1);
                 }
+                $this->generateRow($model, $key, $this->_endRow, $isLastRow && $this->_groupedRow === null);
+                $this->_endRow++;
                 if (!is_null($this->_groupedRow)) {
                     $this->_endRow++;
                     if ($this->_objWorksheet !== null) {
@@ -1575,10 +1585,15 @@ class ExportMenu extends GridView
                         $this->_objWorksheet->getStyle($cell)->applyFromArray($this->groupedRowStyle);
                     }
                     if ($this->_objOpenspoutWriter !== null) {
-                        $groupedRowStyle = OpenspoutHelper::createStyleFromPhpSpreadsheetOptions($this->groupedRowStyle);
-                        $cells = array_map(static function ($value) use ($groupedRowStyle) {
+                        $cells = array_map(function ($value, $idx) use ($isLastRow) {
+                            $groupedRowStyle = OpenspoutHelper::createStyleFromPhpSpreadsheetOptions(
+                                array_merge_recursive(
+                                    $this->getBoxStyleArrayForCell($idx + 1, false, $isLastRow),
+                                    $this->groupedRowStyle
+                                )
+                            );
                             return OpenspoutCell::fromValue($value, $groupedRowStyle);
-                        }, $this->_groupedRow);
+                        }, $this->_groupedRow, array_keys($this->_groupedRow));
                         $this->_objOpenspoutWriter->addRow(new Row($cells));
                     }
                     $this->_groupedRow = null;
@@ -1606,11 +1621,15 @@ class ExportMenu extends GridView
      * @param mixed $model the data model to be rendered
      * @param mixed $key the key associated with the data model
      * @param integer $index the zero-based index of the data model among the model array returned by [[dataProvider]].
+     * @param bool $isLastRow Whether this is the last row in the table.
      * @throws IOException
      * @throws InvalidArgumentException
+     * @throws InvalidNameException
+     * @throws InvalidStyleException
+     * @throws InvalidWidthException
      * @throws WriterNotOpenedException
      */
-    public function generateRow($model, $key, $index)
+    public function generateRow($model, $key, $index, $isLastRow = false)
     {
         /**
          * @var Column $column
@@ -1664,12 +1683,13 @@ class ExportMenu extends GridView
                 $this->raiseEvent('onRenderDataCell', [$cell, $value, $model, $key, $index, $this]);
             }
             if ($this->_objOpenspoutWriter !== null) {
-                $style = new Style();
+                $opts = $this->getBoxStyleArrayForCell($this->_endCol, false, $isLastRow);
+                if ($format === null && $this->enableAutoFormat) {
+                    $opts = array_merge_recursive($opts, $this->getAutoFormattedOpts($model, $key, $index, $column));
+                }
+                $style = OpenspoutHelper::createStyleFromPhpSpreadsheetOptions($opts);
                 if ($format !== null) {
                     $style->setFormat($format);
-                } elseif ($this->enableAutoFormat) {
-                    $opts = $this->getAutoFormattedOpts($model, $key, $index, $column);
-                    $style = OpenspoutHelper::createStyleFromPhpSpreadsheetOptions($opts);
                 }
                 $this->autoWidthColumns[$this->_endCol] = max(strlen($value), $this->autoWidthColumns[$this->_endCol]);
                 $openspoutCells[] = OpenspoutCell::fromValue($value, $style);
@@ -1738,6 +1758,9 @@ class ExportMenu extends GridView
      * @param integer $row the row number after which the content is to be generated
      * @throws IOException
      * @throws InvalidArgumentException
+     * @throws InvalidNameException
+     * @throws InvalidStyleException
+     * @throws InvalidWidthException
      * @throws WriterNotOpenedException
      */
     public function generateAfterContent($row)
@@ -1912,6 +1935,44 @@ class ExportMenu extends GridView
             $box = "{$from}:{$to}";
             $this->_objWorksheet->getStyle($box)->applyFromArray($this->headerStyleOptions[$this->_exportType]);
         }
+    }
+
+    /**
+     * @param int $col
+     * @param bool $isHeader
+     * @param bool $isLastRow
+     * @return array the style array.
+     */
+    protected function getBoxStyleArrayForCell(int $col, bool $isHeader, bool $isLastRow): array
+    {
+        if (!isset($this->boxStyleOptions[$this->_exportType])) {
+            return [];
+        }
+        $opts = $this->boxStyleOptions[$this->_exportType];
+        if (isset($opts['borders']['inside'])) {
+            foreach ([OpenspoutBorder::TOP, OpenspoutBorder::LEFT, OpenspoutBorder::BOTTOM, OpenspoutBorder::RIGHT] as $name) {
+                $opts['borders'][$name] = $opts['borders']['inside'];
+            }
+        }
+        if (isset($opts['borders']['outline'])) {
+            $keys = [];
+            if ($col === 1) {
+                $keys[] = OpenspoutBorder::LEFT;
+            }
+            if ($col === count($this->getVisibleColumns())) {
+                $keys[] = OpenspoutBorder::RIGHT;
+            }
+            if ($isHeader) {
+                $keys[] = OpenspoutBorder::TOP;
+            }
+            if ($isLastRow) {
+                $keys[] = OpenspoutBorder::BOTTOM;
+            }
+            foreach ($keys as $name) {
+                $opts['borders'][$name] = $opts['borders']['outline'];
+            }
+        }
+        return $opts;
     }
 
     /**
@@ -2392,8 +2453,8 @@ class ExportMenu extends GridView
         $this->_groupedRow = [];
         $fLine = ArrayHelper::getValue($this->_groupedColumn[$groupedCol], 'firstLine', -1);
         $fLine = ($fLine == $this->_beginRow) ? $this->_beginRow + 1 : ($fLine + 3);
-        $firstLine = ($this->_endRow == ($this->_beginRow + 3) && $fLine == 2) ? $this->_beginRow + 3 : $fLine;
-        $endLine = $this->_endRow + 1;
+        $firstLine = ($this->_endRow == ($this->_beginRow + 2) && $fLine == 2) ? $this->_beginRow + 3 : $fLine;
+        $endLine = $this->_endRow + 2;
         [$endLine, $firstLine] = ($endLine > $firstLine) ? [$endLine, $firstLine] : [$firstLine, $endLine];
         foreach ($this->getVisibleColumns() as $key => $column) {
             $value = $groupFooter[$key] ?? '';
