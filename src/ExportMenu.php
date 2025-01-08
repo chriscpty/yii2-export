@@ -4,7 +4,7 @@
  * @package   yii2-export
  * @author    Kartik Visweswaran <kartikv2@gmail.com>
  * @copyright Copyright &copy; Kartik Visweswaran, Krajee.com, 2015 - 2023
- * @version   1.4.3
+ * @version   2.0.0
  */
 
 namespace kartik\export;
@@ -663,7 +663,7 @@ class ExportMenu extends GridView
      * Setting this to `true` will generally speed up those three exports and allow for larger export sizes,
      * but will lose some styling options:
      *
-     * - The options `$dataValidation` and `$boxStyleOptions` lose their effects.
+     * - The option `$dataValidation` loses its effect.
      * - The `onInit*` and `onRender*` callbacks are not called.
      * - Auto filtering of columns is lost.
      */
@@ -701,7 +701,7 @@ class ExportMenu extends GridView
     protected $_objWorksheet = null;
 
     /**
-     * @var Writer|OpenspoutCsvWriter object instance
+     * @var Writer|OpenspoutCsvWriter|OpenspoutOdsWriter object instance
      */
     protected $_objOpenspoutWriter = null;
 
