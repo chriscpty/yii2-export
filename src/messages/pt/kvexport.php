@@ -40,6 +40,7 @@ return [
     'The HTML export file will be generated for download.' => 'O ficheiro HTML será gerado para download',
     'The PDF export file will be generated for download.' => 'O ficheiro PDF será gerado para download',
     'The TEXT export file will be generated for download.' => 'O ficheiro de Texto será gerado para download',
+    'The OPENOFFICE export file will be generated for download.' => 'O ficheiro OPENOFFICE será gerado para download',
     'Column' => '',
     'Download exported file' => '',
     'Export data in selected format' => '',

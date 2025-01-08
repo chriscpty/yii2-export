@@ -46,6 +46,7 @@ return [
     'The HTML export file will be generated for download.' => 'Bus sugeneruotas HTML eksporto failas parsisiuntimui.',
     'The PDF export file will be generated for download.' => 'Bus sugeneruotas PDF eksporto failas parsisiuntimui.',
     'The TEXT export file will be generated for download.' => 'Bus sugeneruotas TEXT eksporto failas parsisiuntimui.',
+    'The OPENOFFICE export file will be generated for download.' => 'Bus sugeneruotas OPENOFFICE eksporto failas parsisiuntimui.',
     'grid-export' => 'lentelės eksportas',
     'Input error' => '',
     'Key' => '',

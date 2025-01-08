@@ -32,6 +32,7 @@ return [
     'The HTML export file will be generated for download.' => 'Будет сгенерирован файл в формате HTML.',
     'The PDF export file will be generated for download.' => 'Будет сгенерирован файл в формате PDF.',
     'The TEXT export file will be generated for download.' => 'Будет сгенерирован файл в формате TEXT.',
+    'The OPENOFFICE export file will be generated for download.' => 'Будет сгенерирован файл в формате OPENOFFICE.',
     'CSV' => '',
     'Comma Separated Values' => '',
     'Download exported file' => 'Скачать экспортированный файл',

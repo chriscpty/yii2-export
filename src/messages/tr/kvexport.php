@@ -44,6 +44,7 @@ return [
     'The HTML export file will be generated for download.' => 'HTML aktarım dosyası oluşturulacak.',
     'The PDF export file will be generated for download.' => 'PDF aktarım dosyası oluşturulacak.',
     'The TEXT export file will be generated for download.' => 'Text aktarım dosyası oluşturulacak.',
+    'The OPENOFFICE export file will be generated for download.' => 'OpenOffice aktarım dosyası oluşturulacak.',
     'grid-export' => 'export',
     'Download exported file' => '',
     'Exported File' => '',

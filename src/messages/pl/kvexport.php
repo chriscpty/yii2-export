@@ -38,6 +38,7 @@ return [
     'The HTML export file will be generated for download.' => 'Plik HTML zostanie wygenerowany do pobrania.',
     'The PDF export file will be generated for download.' => 'Plik PDF zostanie wygenerowany do pobrania.',
     'The TEXT export file will be generated for download.' => 'Plik tekstowy zostanie wygenerowany do pobrania.',
+    'The OPENOFFICE export file will be generated for download.' => 'Plik OPENOFFICE zostanie wygenerowany do pobrania.',
     'grid-export' => 'eksport',
     'Excel 2007+' => '',
     'Excel 95 +' => '',

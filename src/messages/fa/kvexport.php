@@ -41,6 +41,7 @@ return [
     'The HTML export file will be generated for download.' => 'فایل HTML خروجی برای دانلود ایجاد خواهد شد.',
     'The PDF export file will be generated for download.' => 'فایل PDF خروجی برای دانلود ایجاد خواهد شد.',
     'The TEXT export file will be generated for download.' => 'فایل TEXT خروجی برای دانلود ایجاد خواهد شد.',
+    'The OPENOFFICE export file will be generated for download.' => 'فایل OPENOFFICE خروجی برای دانلود ایجاد خواهد شد.',
     'Value' => 'مقدار',
     'Value is not in list.' => 'مقدار در لیست وجود ندارد',
     'grid-export' => 'خروجی گرید',

@@ -50,6 +50,7 @@ return [
     'The HTML export file will be generated for download.' => 'Θα δημιουργηθεί το αρχείο δεδομένων σε μορφή HTML.',
     'The PDF export file will be generated for download.' => 'Θα δημιουργηθεί το αρχείο δεδομένων σε μορφή PDF.',
     'The TEXT export file will be generated for download.' => 'Θα δημιουργηθεί το αρχείο δεδομένων σε μορφή TEXT.',
+    'The OPENOFFICE export file will be generated for download.' => 'Θα δημιουργηθεί το αρχείο δεδομένων σε μορφή OPENOFFICE.',
     'Value' => 'Τιμή',
     'Value is not in list.' => 'Η τιμή δεν είναι στη λίστα.',
     'grid-export' => 'grid-export',

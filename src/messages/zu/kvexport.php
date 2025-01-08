@@ -51,7 +51,7 @@ return [
     'The HTML export file will be generated for download.' => '',
     'The PDF export file will be generated for download.' => '',
     'The TEXT export file will be generated for download.' => '',
-    'The OpenOffice export file will be generated for download.' => '',
+    'The OPENOFFICE export file will be generated for download.' => '',
     'Value' => '',
     'Value is not in list.' => '',
     'grid-export' => '',
