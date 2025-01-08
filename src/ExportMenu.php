@@ -17,7 +17,6 @@ use kartik\dynagrid\Dynagrid;
 use kartik\grid\GridView;
 use OpenSpout\Common\Entity\Cell as OpenspoutCell;
 use OpenSpout\Common\Entity\Row;
-use OpenSpout\Common\Entity\Style\Border as OpenspoutBorder;
 use OpenSpout\Common\Entity\Style\Style;
 use OpenSpout\Common\Exception\InvalidArgumentException;
 use OpenSpout\Common\Exception\IOException;
@@ -1945,32 +1944,15 @@ class ExportMenu extends GridView
      */
     protected function getBoxStyleArrayForCell(int $col, bool $isHeader, bool $isLastRow): array
     {
-        if (!isset($this->boxStyleOptions[$this->_exportType])) {
+        if (!isset($this->boxStyleOptions[$this->_exportType]) && (!$isHeader || !isset($this->headerStyleOptions[$this->_exportType]))) {
             return [];
         }
-        $opts = $this->boxStyleOptions[$this->_exportType];
-        if (isset($opts['borders']['inside'])) {
-            foreach ([OpenspoutBorder::TOP, OpenspoutBorder::LEFT, OpenspoutBorder::BOTTOM, OpenspoutBorder::RIGHT] as $name) {
-                $opts['borders'][$name] = $opts['borders']['inside'];
-            }
-        }
-        if (isset($opts['borders']['outline'])) {
-            $keys = [];
-            if ($col === 1) {
-                $keys[] = OpenspoutBorder::LEFT;
-            }
-            if ($col === count($this->getVisibleColumns())) {
-                $keys[] = OpenspoutBorder::RIGHT;
-            }
-            if ($isHeader) {
-                $keys[] = OpenspoutBorder::TOP;
-            }
-            if ($isLastRow) {
-                $keys[] = OpenspoutBorder::BOTTOM;
-            }
-            foreach ($keys as $name) {
-                $opts['borders'][$name] = $opts['borders']['outline'];
-            }
+        $opts = $this->boxStyleOptions[$this->_exportType] ?? [];
+        OpenspoutHelper::setInsideAndOutlineBorders($opts, $isHeader, $isLastRow, $col === 1, $col === count($this->getVisibleColumns()));
+        if ($isHeader && isset($this->headerStyleOptions[$this->_exportType])) {
+            unset($opts['borders']['inside'], $opts['borders']['outline']);
+            $opts = array_merge_recursive($opts, $this->headerStyleOptions[$this->_exportType]);
+            OpenspoutHelper::setInsideAndOutlineBorders($opts, true, true, $col === 1, $col === count($this->getVisibleColumns()));
         }
         return $opts;
     }

@@ -79,11 +79,11 @@ class OpenspoutHelper
                 if (isset($opts['borders'][$name])) {
                     $color = $opts['borders'][$name]['color']['rgb'] ?? Color::BLACK;
                     $width = Border::WIDTH_MEDIUM;
-                    $style = Border::STYLE_NONE;
+                    $borderStyle = Border::STYLE_NONE;
                     if (isset($opts['borders'][$name]['borderStyle'])) {
-                        [$width, $style] = self::mapPhpSpreadsheetBorderConstant($opts['borders'][$name]['borderStyle']);
+                        [$width, $borderStyle] = self::mapPhpSpreadsheetBorderConstant($opts['borders'][$name]['borderStyle']);
                     }
-                    $borderParts[] = new BorderPart($name, $color, $width, $style);
+                    $borderParts[] = new BorderPart($name, $color, $width, $borderStyle);
                 }
             }
             if (!empty($borderParts)) {
@@ -149,5 +149,43 @@ class OpenspoutHelper
             PhpSpreadsheetBorder::BORDER_OMIT                                    => [Border::WIDTH_THIN, Border::STYLE_NONE],
             default                                                              => [Border::WIDTH_MEDIUM, Border::STYLE_DASHED],
         };
+    }
+
+    /**
+     * Set the normal (top, left, right, bottom) border values based on the 'inside' and 'outline' border settings.
+     *
+     * This is necessary because openspout does not support 'inside' nor 'outline'.
+     * @param array $opts The options to update. This will be edited in-place.
+     * @param bool $isFirstRow Whether this is the first row of the inside/outline box.
+     * @param bool $isLastRow Whether this is the last row of the inside/outline box.
+     * @param bool $isFirstColumn Whether this is the first column of the inside/outline box.
+     * @param bool $isLastColumn Whether this is the last column of the inside/outline box.
+     * @return void
+     */
+    public static function setInsideAndOutlineBorders(array &$opts, bool $isFirstRow, bool $isLastRow, bool $isFirstColumn, bool $isLastColumn): void
+    {
+        if (isset($opts['borders']['inside'])) {
+            foreach ([Border::TOP, Border::LEFT, Border::BOTTOM, Border::RIGHT] as $name) {
+                $opts['borders'][$name] = $opts['borders']['inside'];
+            }
+        }
+        if (isset($opts['borders']['outline'])) {
+            $keys = [];
+            if ($isFirstColumn) {
+                $keys[] = Border::LEFT;
+            }
+            if ($isLastColumn) {
+                $keys[] = Border::RIGHT;
+            }
+            if ($isFirstRow) {
+                $keys[] = Border::TOP;
+            }
+            if ($isLastRow) {
+                $keys[] = Border::BOTTOM;
+            }
+            foreach ($keys as $name) {
+                $opts['borders'][$name] = $opts['borders']['outline'];
+            }
+        }
     }
 }
