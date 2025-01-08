@@ -32,7 +32,7 @@ return [
     'The EXCEL 95+ (xls) export file will be generated for download.' => 'EXCEL 95+ (xls)文件即将生成下载。',
     'The HTML export file will be generated for download.' => 'HTML文件即将生成下载。',
     'The PDF export file will be generated for download.' => 'PDF文件即将生成下载。',
-    'The TEXT export file will be generated for download.' => 'TEXT文件即将生成下载。',
+    'The OPENOFFICE export file will be generated for download.' => 'OPENOFFICE文件即将生成下载。',
     'grid-export' => '表格导出',
     'CSV' => '',
     'Comma Separated Values' => '',

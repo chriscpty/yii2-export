@@ -37,6 +37,7 @@ return [
     'The HTML export file will be generated for download.' => 'A HTML fájl előkészítése letöltésre.',
     'The PDF export file will be generated for download.' => 'A PDF fájl előkészítése a letöltésre.',
     'The TEXT export file will be generated for download.' => 'A szöveges export fájl előkészítése letöltésre.',
+    'The OPENOFFICE export file will be generated for download.' => 'A OpenOffice fájl előkészítése a letöltésre.',
     'CSV' => '',
     'Excel 2007+' => '',
     'Excel 95 +' => '',

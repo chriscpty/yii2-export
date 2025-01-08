@@ -2214,7 +2214,7 @@ class ExportMenu extends GridView
                 'iconOptions' => ['class' => 'text-success'],
                 'linkOptions' => [],
                 'options' => ['title' => Yii::t('kvexport', 'OpenOffice (ods)')],
-                'alertMsg' => Yii::t('kvexport', 'The OpenOffice export file will be generated for download.'),
+                'alertMsg' => Yii::t('kvexport', 'The OPENOFFICE export file will be generated for download.'),
                 'mime' => 'application/vnd.oasis.opendocument.spreadsheet',
                 'extension' => 'ods',
                 'writer' => self::FORMAT_ODS,

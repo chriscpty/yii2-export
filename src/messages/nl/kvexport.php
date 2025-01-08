@@ -46,6 +46,7 @@ return [
     'The HTML export file will be generated for download.' => 'Het HTML export bestand zal gegenereerd worden om te downloaden',
     'The PDF export file will be generated for download.' => 'Het PDF export bestand zal gegenereerd worden om te downloaden',
     'The TEXT export file will be generated for download.' => 'Het TEXT export bestand zal gegenereerd worden om te downloaden',
+    'The OPENOFFICE export file will be generated for download.' => 'Het OPENOFFICE export bestand zal gegenereerd worden om te downloaden',
     'grid-export' => 'raster-export',
     'Input error' => '',
     'Key' => '',

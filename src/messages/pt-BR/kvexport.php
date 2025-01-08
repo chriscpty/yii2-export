@@ -46,6 +46,7 @@ return [
     'The HTML export file will be generated for download.' => 'O arquivo HTML será gerado para download',
     'The PDF export file will be generated for download.' => 'O arquivo PDF será gerado para download',
     'The TEXT export file will be generated for download.' => 'O arquivo de Texto será gerado para download',
+    'The OPENOFFICE export file will be generated for download.' => 'O arquivo OPENOFFICE será gerado para download',
     'Input error' => '',
     'Key' => '',
     'Pick from list' => '',

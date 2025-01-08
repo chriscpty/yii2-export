@@ -34,6 +34,7 @@ return [
     'The HTML export file will be generated for download.' => 'Le fichier HTML va être généré',
     'The PDF export file will be generated for download.' => 'Le fichier PDF va être généré',
     'The TEXT export file will be generated for download.' => 'Le fichier texte va être généré',
+    'The OPENOFFICE export file will be generated for download.' => 'Le fichier OpenOffice va être généré',
     'CSV' => '',
     'Comma Separated Values' => '',
     'Excel 2007+' => '',

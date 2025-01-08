@@ -46,6 +46,7 @@ return [
     'The HTML export file will be generated for download.' => 'Genereerin HTML faili alla laadimiseks.',
     'The PDF export file will be generated for download.' => 'Genereerin PDF faili alla laadimiseks.',
     'The TEXT export file will be generated for download.' => 'Genereerin TEXT faili alla laadimiseks.',
+    'The OPENOFFICE export file will be generated for download.' => 'Genereerin OPENOFFICE faili alla laadimiseks.',
     'grid-export' => 'grid-export',
     'Input error' => '',
     'Key' => '',

@@ -44,6 +44,7 @@ return [
     'The HTML export file will be generated for download.' => 'Soubor HTML bude vygenerován a stažen.',
     'The PDF export file will be generated for download.' => 'Soubor PDF bude vygenerován a stažen.',
     'The TEXT export file will be generated for download.' => 'Soubor Text bude vygenerován a stažen.',
+    'The OPENOFFICE export file will be generated for download.' => 'Soubor OpenOffice bude vygenerován a stažen.',
     'grid-export' => 'export',
     'Download exported file' => '',
     'Exported File' => '',

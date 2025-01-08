@@ -32,6 +32,7 @@ return [
     'The HTML export file will be generated for download.' => 'Berkas HTML akan dibuat untuk di-unduh',
     'The PDF export file will be generated for download.' => 'Berkas PDF akan dibuat untuk di-unduh',
     'The TEXT export file will be generated for download.' => 'Berkas TEXT akan dibuat untuk di-unduh',
+    'The OPENOFFICE export file will be generated for download.' => 'Berkas OPENOFFICE akan dibuat untuk di-unduh',
     'CSV' => '',
     'Comma Separated Values' => '',
     'Download exported file' => '',

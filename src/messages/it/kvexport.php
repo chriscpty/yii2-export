@@ -37,6 +37,7 @@ return [
     'The HTML export file will be generated for download.' => 'Il file esportato in HTML sarà generato per il download',
     'The PDF export file will be generated for download.' => 'Il file esportato in PDF sarà generato per il download',
     'The TEXT export file will be generated for download.' => 'Il file esportato in TEXT sarà generato per il download',
+    'The OPENOFFICE export file will be generated for download.' => 'Il file esportato in OPENOFFICE sarà generato per il download',
     'CSV' => '',
     'Excel 2007+' => '',
     'Excel 95 +' => '',
