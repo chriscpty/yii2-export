@@ -1559,12 +1559,14 @@ class ExportMenu extends GridView
         }
         // do not execute multiple COUNT(*) queries
         $totalCount = $this->_provider->getTotalCount();
+        // we need to keep track of the current row to know when we've arrived at the last row
+        $currentRow = 1;
         $this->findGroupedColumn();
         while (count($models) > 0) {
             $keys = $this->_provider->getKeys();
             foreach ($models as $index => $model) {
                 $key = $keys[$index];
-                $isLastRow = $index === $totalCount - 1;
+                $isLastRow = $currentRow === $totalCount;
                 if ($isLastRow) {
                     //a little hack to generate last grouped footer
                     $this->checkGroupedRow($model, $models[0], $key, $this->_endRow + 1);
@@ -1594,6 +1596,7 @@ class ExportMenu extends GridView
                     }
                     $this->_groupedRow = null;
                 }
+                $currentRow++;
             }
             if ($this->_provider->pagination) {
                 $this->_provider->pagination->page++;
