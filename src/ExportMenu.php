@@ -666,7 +666,6 @@ class ExportMenu extends GridView
      *
      * - The option `$dataValidation` loses its effect.
      * - The `onInit*` and `onRender*` callbacks are not called.
-     * - Auto filtering of columns is lost.
      */
     public $useOpenspout = false;
 
