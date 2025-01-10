@@ -20,6 +20,7 @@ use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Style;
 use OpenSpout\Common\Exception\InvalidArgumentException;
 use OpenSpout\Common\Exception\IOException;
+use OpenSpout\Writer\AutoFilter;
 use OpenSpout\Writer\Common\AbstractOptions;
 use OpenSpout\Writer\Common\Entity\Sheet;
 use OpenSpout\Writer\CSV\Options as OpenspoutCsvOptions;
@@ -1607,9 +1608,7 @@ class ExportMenu extends GridView
                 $models = [];
             }
         }
-        if ($this->_objSpreadsheet !== null) {
-            $this->generateBox();
-        }
+        $this->generateBox();
 
         return $this->_endRow;
     }
@@ -1916,23 +1915,31 @@ class ExportMenu extends GridView
     }
 
     /**
-     * Generates the box
+     * Generates the box.
+     *
+     * Box styles for openspout are created on the fly, so for openspout, this just sets the AutoFilter.
      */
     protected function generateBox()
     {
-        // Set autofilter on
-        $from = self::columnName(1).$this->_beginRow;
-        $to = self::columnName($this->_endCol).($this->_endRow + $this->_beginRow);
-        $box = "{$from}:{$to}";
-        $this->_objWorksheet->setAutoFilter($box);
-        if (isset($this->boxStyleOptions[$this->_exportType])) {
-            $this->_objWorksheet->getStyle($box)->applyFromArray($this->boxStyleOptions[$this->_exportType]);
-        }
-
-        if (isset($this->headerStyleOptions[$this->_exportType])) {
-            $to = self::columnName($this->_endCol).$this->_beginRow;
+        if ($this->_objWorksheet !== null) {
+            // Set autofilter on
+            $from = self::columnName(1) . $this->_beginRow;
+            $to = self::columnName($this->_endCol) . ($this->_endRow + $this->_beginRow);
             $box = "{$from}:{$to}";
-            $this->_objWorksheet->getStyle($box)->applyFromArray($this->headerStyleOptions[$this->_exportType]);
+            $this->_objWorksheet->setAutoFilter($box);
+            if (isset($this->boxStyleOptions[$this->_exportType])) {
+                $this->_objWorksheet->getStyle($box)->applyFromArray($this->boxStyleOptions[$this->_exportType]);
+            }
+
+            if (isset($this->headerStyleOptions[$this->_exportType])) {
+                $to = self::columnName($this->_endCol) . $this->_beginRow;
+                $box = "{$from}:{$to}";
+                $this->_objWorksheet->getStyle($box)->applyFromArray($this->headerStyleOptions[$this->_exportType]);
+            }
+        }
+        if ($this->_objOpenspoutSheet !== null) {
+            $autoFilter = new AutoFilter(0, $this->_beginRow, $this->_endCol - 1, $this->_endRow + $this->_beginRow);
+            $this->_objOpenspoutSheet->setAutoFilter($autoFilter);
         }
     }
 
