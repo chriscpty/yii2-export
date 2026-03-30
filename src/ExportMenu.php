@@ -1593,7 +1593,9 @@ class ExportMenu extends GridView
      */
     protected function getColumnLabel($key, $column)
     {
-        $key++;
+        if (is_int($key)) {
+            $key++;
+        }
         $label = Yii::t('kvexport', 'Column') . ' ' . $key;
         if (isset($column->label)) {
             $label = $column->label;
