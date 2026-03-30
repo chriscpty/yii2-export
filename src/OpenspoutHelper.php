@@ -18,8 +18,6 @@ use OpenSpout\Common\Exception\InvalidArgumentException;
 use OpenSpout\Writer\Exception\Border\InvalidNameException;
 use OpenSpout\Writer\Exception\Border\InvalidStyleException;
 use OpenSpout\Writer\Exception\Border\InvalidWidthException;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border as PhpSpreadsheetBorder;
 
 /**
  * This class contains helper methods for using PhpSpreadsheet data with Openspout.
@@ -107,10 +105,10 @@ class OpenspoutHelper
     protected static function mapPhpSpreadsheetHorizontalAlignmentConstant(string $constant): string
     {
         return match ($constant) {
-            Alignment::HORIZONTAL_LEFT    => CellAlignment::LEFT,
-            Alignment::HORIZONTAL_RIGHT   => CellAlignment::RIGHT,
-            Alignment::HORIZONTAL_JUSTIFY => CellAlignment::JUSTIFY,
-            default                       => CellAlignment::CENTER,
+            'left'    => CellAlignment::LEFT,
+            'right'   => CellAlignment::RIGHT,
+            'justify' => CellAlignment::JUSTIFY,
+            default   => CellAlignment::CENTER,
         };
     }
 
@@ -122,11 +120,11 @@ class OpenspoutHelper
     protected static function mapPhpSpreadsheetVerticalAlignmentConstant(string $constant): string
     {
         return match ($constant) {
-            Alignment::VERTICAL_TOP         => CellVerticalAlignment::TOP,
-            Alignment::VERTICAL_BOTTOM      => CellVerticalAlignment::BOTTOM,
-            Alignment::VERTICAL_DISTRIBUTED => CellVerticalAlignment::DISTRIBUTED,
-            Alignment::VERTICAL_JUSTIFY     => CellVerticalAlignment::JUSTIFY,
-            default                         => CellVerticalAlignment::CENTER,
+            'top'         => CellVerticalAlignment::TOP,
+            'bottom'      => CellVerticalAlignment::BOTTOM,
+            'distributed' => CellVerticalAlignment::DISTRIBUTED,
+            'justify'     => CellVerticalAlignment::JUSTIFY,
+            default       => CellVerticalAlignment::CENTER,
         };
     }
 
@@ -139,15 +137,15 @@ class OpenspoutHelper
     protected static function mapPhpSpreadsheetBorderConstant(string $constant): array
     {
         return match ($constant) {
-            PhpSpreadsheetBorder::BORDER_NONE                                    => [Border::WIDTH_MEDIUM, Border::STYLE_NONE],
-            PhpSpreadsheetBorder::BORDER_DOTTED                                  => [Border::WIDTH_MEDIUM, Border::STYLE_DOTTED],
-            PhpSpreadsheetBorder::BORDER_DOUBLE                                  => [Border::WIDTH_MEDIUM, Border::STYLE_DOUBLE],
-            PhpSpreadsheetBorder::BORDER_HAIR, PhpSpreadsheetBorder::BORDER_THIN => [Border::WIDTH_THIN, Border::STYLE_SOLID],
-            PhpSpreadsheetBorder::BORDER_MEDIUM                                  => [Border::WIDTH_MEDIUM, Border::STYLE_SOLID],
-            PhpSpreadsheetBorder::BORDER_SLANTDASHDOT                            => [Border::WIDTH_THIN, Border::STYLE_DASHED],
-            PhpSpreadsheetBorder::BORDER_THICK                                   => [Border::WIDTH_THICK, Border::STYLE_SOLID],
-            PhpSpreadsheetBorder::BORDER_OMIT                                    => [Border::WIDTH_THIN, Border::STYLE_NONE],
-            default                                                              => [Border::WIDTH_MEDIUM, Border::STYLE_DASHED],
+            'none'         => [Border::WIDTH_MEDIUM, Border::STYLE_NONE],
+            'dotted'       => [Border::WIDTH_MEDIUM, Border::STYLE_DOTTED],
+            'double'       => [Border::WIDTH_MEDIUM, Border::STYLE_DOUBLE],
+            'hair', 'thin' => [Border::WIDTH_THIN, Border::STYLE_SOLID],
+            'medium'       => [Border::WIDTH_MEDIUM, Border::STYLE_SOLID],
+            'slantDashDot' => [Border::WIDTH_THIN, Border::STYLE_DASHED],
+            'thick'        => [Border::WIDTH_THICK, Border::STYLE_SOLID],
+            'omit'         => [Border::WIDTH_THIN, Border::STYLE_NONE],
+            default        => [Border::WIDTH_MEDIUM, Border::STYLE_DASHED],
         };
     }
 
