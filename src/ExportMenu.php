@@ -675,11 +675,20 @@ class ExportMenu extends GridView
         $this->_objOpenspoutWriter->setCurrentSheet($this->_objOpenspoutSheet);
         $row = $this->generateFooter();
         $this->generateAfterContent($row);
-        if ($this->autoWidth && ($this->_objOpenspoutOptions instanceof AbstractOptions)) {
-            foreach ($this->autoWidthColumns as $n => $width) {
-                // ODS and XLSX files scale widths differently, so use different scaling factor
-                $factor = $this->_exportType === self::FORMAT_ODS ? 6.0 : 1.2;
-                $this->_objOpenspoutOptions->setColumnWidth($width * $factor, $n);
+        if ($this->_objOpenspoutOptions instanceof AbstractOptions) {
+            $columns = $this->getVisibleColumns();
+            $col = 0;
+            // ODS and XLSX files scale widths differently, so use different scaling factor
+            $factor = $this->_exportType === self::FORMAT_ODS ? 5.0 : 1.0;
+            foreach ($columns as $column) {
+                $col++;
+                if (isset($column->options['width'])) {
+                    $this->_objOpenspoutOptions->setColumnWidth($column->options['width'] * $factor, $col);
+                    continue;
+                }
+                if ($this->autoWidth) {
+                    $this->_objOpenspoutOptions->setColumnWidth($this->autoWidthColumns[$col] * 1.2 * $factor, $col);
+                }
             }
         }
         $this->_objOpenspoutWriter->close();
@@ -1241,7 +1250,6 @@ class ExportMenu extends GridView
         $this->_endCol = 0;
         $openspoutCells = [];
         foreach ($this->getVisibleColumns() as $column) {
-            $yiiFormat = $this->enableFormatter && isset($column->format) ? $column->format : 'raw';
             $value = null;
             if ($column instanceof SerialColumn) {
                 $value = $index + 1;
@@ -1257,6 +1265,7 @@ class ExportMenu extends GridView
                 $value = ArrayHelper::getValue($model, $column->attribute, '');
             }
             $this->_endCol++;
+            $yiiFormat = $this->enableFormatter && isset($column->format) ? $column->format : 'raw';
             if (isset($value) && $value !== '' && isset($yiiFormat)) {
                 $value = $this->formatter->format($value, $yiiFormat);
             } else {
@@ -1282,7 +1291,12 @@ class ExportMenu extends GridView
             if ($format !== null) {
                 $style->setFormat($format);
             }
-            $this->autoWidthColumns[$this->_endCol] = max(strlen($value), $this->autoWidthColumns[$this->_endCol]);
+            $length = match (true) {
+                is_string($value) => strlen($value),
+                $value instanceof \DateTimeInterface => 10,
+                default => 0,
+            };
+            $this->autoWidthColumns[$this->_endCol] = max($length, $this->autoWidthColumns[$this->_endCol]);
             $openspoutCells[] = OpenspoutCell::fromValue($value, $style);
         }
         $this->_objOpenspoutWriter->addRow(new Row($openspoutCells));
