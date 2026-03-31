@@ -31,6 +31,13 @@
     opacity: .65;
 }
 
+.kv-checkbox-list .highlight-sorting-below {
+    border-bottom: 1px solid dodgerblue;
+}
+.kv-checkbox-list .highlight-sorting-above {
+    border-top: 1px solid dodgerblue;
+}
+
 .kv-toggle-all {
     font-style: italic;
     color: #337ab7;

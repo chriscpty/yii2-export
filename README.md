@@ -69,6 +69,8 @@ For example if you are using the Bootstrap v5.x add the following to the `requir
 "kartik-v/yii2-bootstrap5-dropdown": "@dev"
 ```
 
+`yii2-Export` expects jQuery and jQuery UI to be available.
+
 ### Install
 
 Either run:

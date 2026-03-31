@@ -650,6 +650,7 @@ class ExportMenu extends GridView
     {
         $this->initI18N(__DIR__);
         $this->initColumnSelector();
+        $this->initNoExportColumns();
         $this->setVisibleColumns();
         $this->initExport();
         if (!$this->_triggerDownload) {
@@ -1106,22 +1107,33 @@ class ExportMenu extends GridView
     }
 
     /**
+     * Add any action columns to the noExportColumns field.
+     */
+    protected function initNoExportColumns()
+    {
+        foreach ($this->columns as $key => $column) {
+            $isActionColumn = $column instanceof ActionColumn;
+            $isNoExport = in_array($key, $this->noExportColumns, false) ||
+                ($this->showColumnSelector && !in_array($key, $this->selectedColumns, false));
+            if ($isActionColumn && !$isNoExport) {
+                $this->noExportColumns[] = $key;
+            }
+        }
+    }
+
+    /**
      * Sets visible columns for export
      */
     protected function setVisibleColumns()
     {
         $columns = [];
-        foreach ($this->columns as $key => $column) {
-            $isActionColumn = $column instanceof ActionColumn;
-            $isNoExport = in_array($key, $this->noExportColumns) ||
-                ($this->showColumnSelector && is_array($this->selectedColumns) && !in_array(
-                        $key,
-                        $this->selectedColumns
-                    ));
-            if ($isActionColumn && !$isNoExport) {
-                $this->noExportColumns[] = $key;
-            }
-            if (!empty($column->hiddenFromExport) || $isActionColumn || $isNoExport) {
+        foreach ($this->selectedColumns as $key) {
+            $column = $this->columns[$key];
+            if (
+                !empty($column->hiddenFromExport)
+                || $column instanceof ActionColumn
+                || in_array($key, $this->noExportColumns, false)
+            ) {
                 continue;
             }
             $columns[] = $column;
@@ -1297,9 +1309,9 @@ class ExportMenu extends GridView
                 $style->setFormat($format);
             }
             $length = match (true) {
-                is_string($value) => strlen($value),
+                is_string($value)                    => strlen($value),
                 $value instanceof \DateTimeInterface => 10,
-                default => 0,
+                default                              => 0,
             };
             $this->autoWidthColumns[$this->_endCol] = max($length, $this->autoWidthColumns[$this->_endCol]);
             $openspoutCells[] = OpenspoutCell::fromValue($value, $style);
