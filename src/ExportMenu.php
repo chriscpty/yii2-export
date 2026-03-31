@@ -664,7 +664,16 @@ class ExportMenu extends GridView
         $config = ArrayHelper::getValue($this->exportConfig, $this->_exportType, []);
         $file = $this->getTargetDirectory($config);
         $this->initOpenspout();
-        $this->_objOpenspoutWriter->openToFile($file);
+        if ($this->stream) {
+            $this->clearOutputBuffers();
+            $config = ArrayHelper::getValue($this->exportConfig, $this->_exportType, []);
+            $extension = ArrayHelper::getValue($config, 'extension', 'xlsx');
+            header('Expires: Sat, 26 Jul 1997 05:00:00 GMT');
+            header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+            $this->_objOpenspoutWriter->openToBrowser($this->filename . '.' . $extension);
+        } else {
+            $this->_objOpenspoutWriter->openToFile($file);
+        }
         $this->initOpenspoutSheetView();
         $this->generateBeforeContent();
         $this->generateHeader();
@@ -693,10 +702,6 @@ class ExportMenu extends GridView
         }
         $this->_objOpenspoutWriter->close();
         if ($this->stream) {
-            $this->setHttpHeaders();
-            $this->clearOutputBuffers();
-            readfile($file);
-            $this->cleanup($file);
             exit();
         }
 
@@ -1276,7 +1281,7 @@ class ExportMenu extends GridView
                 $contentOptions = $contentOptions($model, $key, $index, $column);
             }
 
-            //20201026 Scott: To avoid 'Closure object cannot have properties' error 
+            //20201026 Scott: To avoid 'Closure object cannot have properties' error
             try {
                 $format = ArrayHelper::getValue($contentOptions, 'cellFormat');
             } catch (Exception|Throwable $e) {
@@ -1896,24 +1901,6 @@ class ExportMenu extends GridView
             }
             $this->_groupedRow[] = !isset($value) || $value === '' ? '' : strip_tags($value);
         }
-    }
-
-    /**
-     * Set HTTP headers for download
-     */
-    protected function setHttpHeaders()
-    {
-        $config = ArrayHelper::getValue($this->exportConfig, $this->_exportType, []);
-        $extension = ArrayHelper::getValue($config, 'extension', 'xlsx');
-        $mime = ArrayHelper::getValue($config, 'mime');
-        header('Cache-Control: public, must-revalidate, max-age=0');
-        header('Pragma: public');
-        header('Expires: Sat, 26 Jul 1997 05:00:00 GMT');
-        header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
-        if (!empty($mime)) {
-            header("Content-Type: {$mime}; charset={$this->encoding}");
-        }
-        header("Content-Disposition: attachment; filename=\"{$this->filename}.{$extension}\"");
     }
 
     /**
